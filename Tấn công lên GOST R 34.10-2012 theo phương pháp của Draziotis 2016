@@ -1,0 +1,192 @@
+"Sinh chu ky...";
+p:=57896044618658097711785492504343953926634992332820282019728792003956564821041;
+K := GF(p);
+E:=EllipticCurve([K|7,43308876546767276905765904595650931995942111794451039583252968842033849580414]);
+q:=57896044618658097711785492504343953927082934583725450622380973592137631069619;
+P:=E![2,4018974056539037503335449422937059775635739389905545080690979365213431566280];
+
+a := Random(2^90);
+"khoa ky dai han a=",a;
+Q := a*P;
+
+
+h_m:=7024333237208647354832195679971465048439776467050147633455520126141368155876;
+t:=Random(2^90);
+k:=InverseMod(t,q);
+"khoa ky tuc thoi k=",k;
+kp_seq := ElementToSequence (k*P);
+r:= (IntegerRing()!kp_seq[1]) mod q;
+s:= (k*h_m + a*r) mod q;
+"Da sinh chu ky xong";
+"r=",r;
+"s=",s;
+"kiem tra chu ky..."; 
+r in [1..q-1];
+s in [1..q-1];
+w := InverseMod (h_m, q);
+u1 := s*w mod q; u2 := -r*w mod q;
+temp := u1*P + u2*Q;
+temp_seq := ElementToSequence (temp);
+v := (IntegerRing()!temp_seq[1]) mod q;
+"Chu ky la:", v eq r;
+"Tan cong ...";
+Y:=a;
+X:=InverseMod(k,q); // X=k^-1 mod q
+
+h1:=0.262*q^1.157;
+Y*X^2 lt h1;
+
+h2:=1/(6^1.5)*q;
+Y*X^2 lt h2;
+
+tancong_Draziotis_2016:=function(h_m,r,s)
+
+R<x,y> := PolynomialRing(RationalField(),2); // khai bao da thuc hai bien voi cac he so huu ti
+cox :=1;
+coy :=1;
+cor :=1;
+m := 6;
+A:=(-InverseMod(r,q)*(s mod q)) mod q; //A=-r^-1*s (mod q)
+B:=(InverseMod(r,q)*(h_m mod q)) mod q; //B=r^-1*h(m) mod q
+
+f1 := (x*(y+A)+B)/q; // khai bao da thuc
+M := ZeroMatrix(RationalField(),35,35); // khai bao ma tran khong co kich thuoc 35*35
+YY := ZeroMatrix(RationalField(),7,7); // khai bao ma tran khong co kich thuoc 7*7 
+RR := ZeroMatrix(RationalField(),7,28); // khai bao ma tran khong co kich thuoc 7*7 
+
+// Ham da thuc Xshift
+
+function Xshift(f)
+t := []; //khai bao mang chua he so cua don thuc
+v :=1; // gia tri khoi tao cua mang cac phan tu 
+for i:= 0 to Degree(f,x) do 
+    for j := 0 to Degree(f,y)+6 do
+        if j le i then
+           t[v] := MonomialCoefficient(f,x^i*y^j)*X^i*Y^j; //them cac phan tu cua mang voi he so cua da thuc tuog ung 
+           v +:= 1; // buoc tip sang phan tu tiep theo cua mang trong khoi 1 
+        end if;
+    end for;
+end for;
+return t;
+end function;
+
+//Ham da thuc Yshift
+
+function Yshift(f)
+t1 := [];
+v := 1;
+for i:= 0 to Degree(f,x) do 
+    for j := 0 to Degree(f,y) do
+        if j eq i+1  then
+           t1[v] := MonomialCoefficient(f,x^i*y^j)*X^i*Y^j; //them cac phan tu cua mang voi he so cua da thuc tuog ung khoi thu 2 
+           v +:= 1;
+        end if;
+    end for;
+end for;
+return t1;
+end function;
+
+//Ham them he so da thuc vao ma tran
+
+function add(CC,ar,d)
+for i := 1 to #ar do 
+    CC[d][i] := ar[i];
+end for; 
+return CC;
+end function;
+
+//Ham dua cac he so cua tung truong hop vao ma tran .
+for u :=0 to m do 
+    for i :=0 to m do
+        for j := 0 to m do 
+            if i+j eq u then 
+                ti := Xshift(x^i*f1^j); // lay he so voi da thuc tuong ung
+                M := add(M,ti,cox); // them he so do vao ma tran 
+                cox +:= 1; // tang chi so hang len de them he so cua da thuc tiep theo 
+                ti := [] ; // lam rong mang de dung lai 
+            end if;
+        end for;
+    end for;
+end for; 
+
+for su := 0  to m do 
+    tiy := Yshift(y*f1^su); // lay he so voi da thuc tuong ung
+    YY := add(YY, tiy, coy); // them he so do vao ma tran 
+    coy +:=1; // tang chi so hang len de them he so cua da thuc tiep theo 
+    tiy :=[]; // lam rong mang de dung lai 
+end for ;
+
+for vu := 0  to m do 
+    tir := Xshift(y*f1^vu); // lay he so voi da thuc tuong ung
+    RR := add(RR, tir, cor); // them he so do vao ma tran 
+    cor +:=1; // tang chi so hang len de them he so cua da thuc tiep theo 
+    tir :=[]; // lam rong mang de dung lai 
+end for ;
+
+for i:=29 to 35 do 
+    for j:= 29 to 35 do 
+        M[i][j] := YY[i-28][j-28]; // dich ma tran de ghep khoi cho chinh xac 
+    end for;
+end for;
+
+for i:=29 to 35 do 
+    for j:= 1 to 28 do 
+        M[i][j] := RR[i-28][j]; // dich ma tran de ghep khoi cho chinh xac
+    end for;
+end for;
+
+LLLM:= LLL(M); // LLL ma tran M
+
+// lay he so da thuc tu ma tran sau LLLM
+h1 := 0; // khoi tao hai da thuc h1
+h2 := 0; // khoi tao da thuc h2
+ron1 := 1;
+ron2 := 1;
+
+for i :=0 to m do 
+    for j :=0 to m do 
+        if j le i then
+            h1 +:= (LLLM[1][ron1]*x^i*y^j)/(X^i*Y^j); // lay he so lan luot tung hang cua ma tran ghep vao da thuc 
+            ron1 +:=1; // tang gia tri tiep theo de ghep voi chuan da thuc 
+        end if ; 
+    end for;
+end for ;
+
+for i:= 0 to 7 do 
+    for j := 1 to 7 do
+        if j eq i+1  then
+           h1 +:= (LLLM[1][ron1]*x^i*y^j)/(X^i*Y^j); // lay he so lan luot tung hang cua ma tran ghep vao da thuc
+           ron1 +:=1; // tang gia tri tiep theo de ghep voi chuan da thuc 
+        end if;
+    end for;
+end for;
+
+
+for i :=0 to m do 
+    for j :=0 to m do 
+        if j le i then
+            h2 +:= (LLLM[2][ron2]*x^i*y^j)/(X^i*Y^j); // lay he so lan luot tung hang cua ma tran ghep vao da thuc 
+            ron2 +:=1; // tang gia tri tiep theo de ghep voi chuan da thuc 
+        end if ; 
+    end for;
+end for ;
+
+for i:= 0 to 7 do 
+    for j := 1 to 7 do
+        if j eq i+1  then
+           h2 +:= (LLLM[2][ron2]*x^i*y^j)/(X^i*Y^j); // lay he so lan luot tung hang cua ma tran ghep vao da thuc 
+           ron2 +:=1;// tang gia tri tiep theo de ghep voi chuan da thuc 
+        end if;
+    end for;
+end for;
+
+h3 := Resultant(h1,h2,x); // tinh ket thuc cua da thuc h1 va h2 theo bien x
+x0 := Roots(UnivariatePolynomial(h3)); // tim nghiem cua da thuc h3
+// kiem tra nghiem tim duoc co phai la khoa ky dai han hay khong
+nghiem:=IntegerRing()!x0[1][1];
+Q1:=nghiem*P;		//Q1=x0*P
+if Q1 eq Q then
+return "Kiem tra khoa ky dai han", nghiem;	// Tr? l?i a
+end if;
+end function;
+tancong_Draziotis_2016(h_m,r,s);
